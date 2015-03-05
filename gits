@@ -1,9 +1,11 @@
 #!/bin/bash
 
+base=$(dirname $0)
+
 if [ -z "$1" ] ; then
-  gits-status
+  $base/commands/status
 else
-  command="$0-$1"
+  command="$base/commands/$1"
   shift
   $command $*
 fi

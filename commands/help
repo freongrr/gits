@@ -1,0 +1,24 @@
+#!/bin/bash
+
+base=$(dirname $0)
+script_path=$base/gits
+
+if [ "$1" == "--help" ] ; then
+  echo "show this help"
+  exit 1
+elif [ "$1" == "--inline" ] ; then
+  for x in `ls -1 $base/*` ; do
+    echo -n "$(basename $x) "
+  done
+  exit 2
+else
+  echo "Usage: gits COMMAND [ARGUMENTS...]"
+  echo
+  echo "Commands:"
+  for x in `ls -1 $base/*` ; do
+    name=$(basename $x)
+    description=$($x --help)
+    echo "    $name: $description"
+  done
+fi
+

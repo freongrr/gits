@@ -2,7 +2,7 @@
 
 _complete_gits() {
   local cur="$2" prev="$3"
-  COMMANDS=$(gits-help --inline)
+  COMMANDS=$(gits help --inline)
   COMPREPLY=( $( compgen -W "$COMMANDS" -- "$cur" ) )
   return 0
 }
