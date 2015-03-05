@@ -1,0 +1,10 @@
+#!/bin/bash
+
+if [ -z "$1" ] ; then
+  gits-status
+else
+  command="$0-$1"
+  shift
+  $command $*
+fi
+

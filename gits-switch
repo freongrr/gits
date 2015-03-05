@@ -1,0 +1,22 @@
+#!/bin/bash
+
+if [ "$1" == "--help" ] ; then
+  echo "switch all git repositories to a branch"
+  exit 1
+fi
+
+branch="$1"
+
+if [ -z "$branch" ] ; then
+  echo "Missing branch"
+  exit
+fi
+
+root="$PWD"
+for x in `find . -type d -name ".git" | grep -v checkout` ; do
+  cd $root/$x/..
+ 
+  echo "*** $(basename $PWD) ***"
+  git checkout $branch && git pull
+done
+
