@@ -1,5 +1,7 @@
 #!/bin/bash
 
+source "$(dirname $0)/../colors"
+
 if [ "$1" == "--help" ] ; then
   echo "switch all git repositories to a branch"
   exit 1
@@ -16,7 +18,15 @@ root="$PWD"
 for x in `find . -type d -name ".git" | grep -v checkout` ; do
   cd $root/$x/..
  
-  echo "*** $(basename $PWD) ***"
-  git checkout $branch && git pull
+  echo -n "$(basename $PWD): "
+  if $(git branch | grep "* $branch" > /dev/null ) ; then
+    echo -e "${C_GREEN}already in $branch${C_OFF}"
+  elif $(git branch | grep " $branch" > /dev/null) ; then
+    echo -e "${C_YELLOW}updating $branch${C_OFF}"
+    git checkout $branch && git pull
+  else
+    echo -e "${C_YELLOW}checking out $branch${C_OFF}"
+    git fetch && git checkout $branch
+  fi
 done
 
