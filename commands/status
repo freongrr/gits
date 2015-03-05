@@ -2,8 +2,15 @@
 
 source "$(dirname $0)/../colors"
 
-if [ "$1" == "--help" ] ; then
+if [ "$1" == "--description" ] ; then
   echo "show the status of all the git repositories"
+  exit 1
+elif [ "$1" == "--help" ] ; then
+  echo "Usage: gits $(basename $0) [--help] [--full]"
+  echo
+  echo "Options:"
+  echo "    --help show this message"
+  echo "    --full show the modified files"
   exit 1
 fi
 
@@ -17,6 +24,9 @@ for x in `find . -type d -name ".git" | grep -v checkout | sort` ; do
     echo -e "$(basename $PWD): ${C_GREEN}$branch${C_OFF}"
   else
     echo -e "$(basename $PWD): ${C_YELLOW}$branch${C_OFF} (local changes)"
+    if [ "$1" == "--full" ] ; then
+      git status --short
+    fi
   fi
 done
 

@@ -1,7 +1,17 @@
 #!/bin/bash
 
-if [ "$1" == "--help" ] ; then
+if [ "$1" == "--description" ] ; then
   echo "show the changes between versions"
+  exit 1
+elif [ "$1" == "--help" ] ; then
+  echo "Usage: gits $(basename $0) [--help] FROM [TO]"
+  echo
+  echo "Options:"
+  echo "    --help show this message"
+  echo
+  echo "Arguments:"
+  echo "    FROM the starting tag"
+  echo "    TO   the end tag (or HEAD if none)"
   exit 1
 fi
 

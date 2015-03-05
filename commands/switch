@@ -2,8 +2,17 @@
 
 source "$(dirname $0)/../colors"
 
-if [ "$1" == "--help" ] ; then
+if [ "$1" == "--description" ] ; then
   echo "switch all git repositories to a branch"
+  exit 1
+elif [ "$1" == "--help" ] ; then
+  echo "Usage: gits $(basename $0) [--help] BRANCH"
+  echo
+  echo "Options:"
+  echo "    --help show this message"
+  echo
+  echo "Arguments:"
+  echo "    BRANCH the branch to switch to"
   exit 1
 fi
 
