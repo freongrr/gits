@@ -1,6 +1,7 @@
 #!/bin/bash
 
 source "$(dirname $0)/../colors"
+source "$(dirname $0)/../logger"
 
 if [ "$1" == "--description" ] ; then
   echo "switch all git repositories to a branch"
@@ -19,8 +20,7 @@ fi
 branch="$1"
 
 if [ -z "$branch" ] ; then
-  echo "Missing branch"
-  exit
+  fatal "Missing branch"
 fi
 
 root="$PWD"
@@ -29,7 +29,8 @@ for x in `find . -type d -name ".git" | grep -v checkout` ; do
  
   echo -n "$(basename $PWD): "
   if $(git branch | grep "* $branch" > /dev/null ) ; then
-    echo -e "${C_GREEN}already in $branch${C_OFF}"
+    echo -e "${C_GREEN}already on $branch${C_OFF}"
+    git pull
   elif $(git branch | grep " $branch" > /dev/null) ; then
     echo -e "${C_YELLOW}updating $branch${C_OFF}"
     git checkout $branch && git pull

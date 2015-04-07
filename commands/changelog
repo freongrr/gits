@@ -1,13 +1,20 @@
 #!/bin/bash
 
+source "$(dirname $0)/../colors"
+source "$(dirname $0)/../logger"
+
 if [ "$1" == "--description" ] ; then
   echo "show the changes between versions"
   exit 1
 elif [ "$1" == "--help" ] ; then
-  echo "Usage: gits $(basename $0) [--help] FROM [TO]"
+  echo "Usage: gits $(basename $0) [--help] [--all] [--collapse] [--since DATE] [--until DATE] FROM [TO]"
   echo
   echo "Options:"
-  echo "    --help show this message"
+  echo "    --help          show this message"
+  echo "    --all           look at all refs"
+  echo "    --collapse      collapse the changes across all repositories"
+  echo "    --since=<date>  show changes newer than this date"
+  echo "    --until=<date>  show changes older than this date"
   echo
   echo "Arguments:"
   echo "    FROM the starting tag"
@@ -15,38 +22,80 @@ elif [ "$1" == "--help" ] ; then
   exit 1
 fi
 
-source $HOME/work/git/fcortina/files/log4bash.sh
+args=`getopt -o "h,a,c,s:,u:" -l "help,all,collapse,since:,until:" -- "$@"` || fatal "Invalid arguments"
+
+eval set -- "$args"
+while [ $# != 0 ] ; do
+  opt="$1"; shift;
+  case "$opt" in
+    -c|--collapse)
+      collapse=1;;
+    -a|--all)
+      all=1;;
+    -s|--since)
+      since=$1 && shift;;
+    -u|--until)
+      until=$1 && shift;;
+    --)
+      break;;
+  esac
+done
 
 tag="$1"
-dest="$2"
+dest="${2-HEAD}"
 
-[ -z "$tag" ] && fatal "Missing tag"
-[ -z "$dest" ] && dest="HEAD"
+if [[ "$tag" == "" && "$since" == "" && "$until" == "" ]] ; then
+  fatal "Missing tag"
+fi
 
 root="$PWD"
 for x in `find . -type d -name ".git" | grep -v checkout | sort` ; do
   cd $root/$x/..
- 
-  info "*** $(basename $PWD) ***"
 
-  repo_tag=`git tag | grep "$tag"`
+  [ -z "$collapse" ] && info "*** $(basename $PWD) ***"
 
-  if [ -z "$repo_tag" ] ; then
-    warn "Can't find match for '$tag'"
-  else
-    log=$(git log --no-merges --format="format:[%an] %s" $repo_tag..$dest | \
-        grep -v "maven-release-plugin" | \
-        grep -v "Pointing to the next version" | \
-        grep -v "Preparing for the release" | \
-        grep -v "No JIRA - Creating branch")
+  command="git log --no-merges --format=(%ad)%x20[%an]%x20%s"
 
-    if [ -z "$log" ] ; then
-      debug "No changes"
-    else
-      echo "$log"
-    fi
+  if [ -n "$all" ] ; then
+    command="$command --all"
   fi
 
-  echo
+  if [ -n "$since" ] ; then
+    command="$command --since $since"
+  fi
+
+  if [ -n "$until" ] ; then
+    command="$command --until $until"
+  fi
+
+  if [ -n "$tag" ] ; then
+    tags=`git tag | grep "$tag" | wc -l`
+    if [[ $tags == 0 ]] ; then
+      warn "Can't find match for '$tag'"
+      continue
+    elif [[ $tags > 1 ]] ; then
+      warn "Found multiple matches for '$tag':"
+      git tag | grep "$tag"
+      continue
+    fi
+    repo_tag=`git tag | grep "$tag"`
+    command="$command $repo_tag..$dest"
+  fi
+
+  command="$command --"
+
+  log=$($command | \
+      grep -v "maven-release-plugin" | \
+      grep -v "Pointing to the next version" | \
+      grep -v "Preparing for the release" | \
+      grep -v "No JIRA - Creating branch")
+
+  if [ -z "$log" ] ; then
+    [ -z "$collapse" ] && debug "No changes"
+  else
+    echo "$log"
+  fi
+
+  [ -z "$collapse" ] && echo
 done
 
