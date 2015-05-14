@@ -20,10 +20,13 @@ for x in `find . -type d -name ".git" | grep -v checkout | sort` ; do
 
   branch=$(git branch | grep '*' | cut -c3-)
 
-  if [[ $(git status 2> /dev/null | tail -n1) == "nothing to commit, working directory clean" ]] ; then
+  last_line=$(git status 2> /dev/null | tail -n1)
+  if [[ $last_line == "nothing to commit, working directory clean" ]] ; then
     echo -e "$(basename $PWD): ${C_GREEN}$branch${C_OFF}"
+  elif [[ $last_line =~ nothing\ added\ to\ commit\ but\ untracked\ files\ present.* ]] ; then
+    echo -e "$(basename $PWD): ${C_YELLOW}$branch${C_OFF} (untracked files)"
   else
-    echo -e "$(basename $PWD): ${C_YELLOW}$branch${C_OFF} (local changes)"
+    echo -e "$(basename $PWD): ${C_RED}$branch${C_OFF} (local changes)"
     if [ "$1" == "--full" ] ; then
       git status --short
     fi
