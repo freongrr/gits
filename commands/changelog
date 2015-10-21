@@ -22,7 +22,15 @@ elif [ "$1" == "--help" ] ; then
   exit 1
 fi
 
-args=`getopt -o "h,a,c,s:,u:" -l "help,all,collapse,since:,until:" -- "$@"` || fatal "Invalid arguments"
+if echo $OSTYPE | grep -qiE "(solaris|darwin)" ; then
+  args=$(getopt "$short" $@ 2>&1)
+  if [ $? != 0 ] ; then
+    error $args
+    exit 1
+  fi
+else
+  args=`getopt -o "h,a,c,s:,u:" -l "help,all,collapse,since:,until:" -- "$@"` || fatal "Invalid arguments"
+fi
 
 eval set -- "$args"
 while [ $# != 0 ] ; do
@@ -69,7 +77,7 @@ for x in `find . -type d -name ".git" | grep -v checkout | sort` ; do
   fi
 
   if [ -n "$tag" ] ; then
-    tags=`git tag | grep "$tag" | wc -l`
+    tags=`git tag | grep "$tag" | wc -l | sed -e "s/ //g"`
     if [[ $tags == 0 ]] ; then
       warn "Can't find match for '$tag'"
       continue

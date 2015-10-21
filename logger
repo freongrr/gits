@@ -1,6 +1,6 @@
 fatal() {
   if [ -t 1 ] ; then
-    echo -e "\e[1;31m$*\e[0m" > /dev/stderr
+    echo -e "\x1B[1;31m$*\x1B[0m" > /dev/stderr
   else
     echo "$*"
   fi
@@ -9,7 +9,7 @@ fatal() {
 
 error() {
   if [ -t 1 ] ; then
-    echo -e "\e[1;33m$*\e[0m"
+    echo -e "\x1B[1;33m$*\x1B[0m"
   else
     echo "$*"
   fi
@@ -17,7 +17,7 @@ error() {
 
 warn() {
   if [ -t 1 ] ; then
-    echo -e "\e[1;33m$*\e[0m"
+    echo -e "\x1B[1;33m$*\x1B[0m"
   else
     echo "$*"
   fi
@@ -25,7 +25,7 @@ warn() {
 
 info() {
   if [ -t 1 ] ; then
-    echo -e "\e[1;32m$*\e[0m"
+    echo -e "\x1B[1;32m$*\x1B[0m"
   else
     echo "$*"
   fi
@@ -33,7 +33,7 @@ info() {
 
 debug() {
   if [ -t 1 ] ; then
-    echo -e "\e[0;32m$*\e[0m"
+    echo -e "\x1B[0;32m$*\x1B[0m"
   else
     echo "$*"
   fi
