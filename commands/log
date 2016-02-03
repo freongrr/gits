@@ -1,0 +1,90 @@
+#!/bin/bash
+
+source "$(dirname $0)/../colors"
+source "$(dirname $0)/../logger"
+
+if [ "$1" == "--description" ] ; then
+  echo "show changes"
+  exit 1
+elif [ "$1" == "--help" ] ; then
+  echo "Usage: gits $(basename $0) [--help] [--user USER] [--since DATE] [--until DATE]"
+  echo
+  echo "Options:"
+  echo "    --help          show this message"
+  echo "    --user=<user>   show changes from this user"
+  echo "    --date=<date>   show changes on this date"
+  exit 1
+fi
+
+args=`getopt -o "h,u:,d:" -l "help,user:,date:" -- "$@"` || fatal "Invalid arguments"
+
+eval set -- "$args"
+while [ $# != 0 ] ; do
+  opt="$1"; shift;
+  case "$opt" in
+    -u|--user)
+      user=$1 && shift;;
+    -d|--date)
+      date=$1 && shift;;
+    --)
+      break;;
+  esac
+done
+
+[ -z "$user" ] && fatal "Missing user"
+[ -z "$date" ] && fatal "Missing date"
+
+printCommit() {
+  local hash=$(echo "$1" | cut -d';' -f1)
+  local commit_date=$(echo "$1" | cut -d';' -f2)
+  local commit_time=$(echo "$commit_date" | cut -d' ' -f2)
+  local commit_name=$(echo "$1" | cut -d';' -f3)
+  local author_date=$(echo "$1" | cut -d';' -f4)
+  local author_name=$(echo "$1" | cut -d';' -f5)
+  local summary=$(echo "$1" | cut -d';' -f6)
+  local commit_id="$(basename $repo_short_name):$hash"
+
+  echo -ne "${C_DARK_YELLOW}[$commit_time"
+  if [ "$commit_date" != "$author_date" ] ; then
+    echo -ne " (authored: $author_date)"
+  fi
+  if [ "$commit_name" != "$author_name" ] ; then
+    echo -ne " (author: $author_name)"
+  fi
+  echo -ne "]${C_OFF}"
+
+  echo -e " $summary ${C_DARK_BLUE}($commit_id)${C_OFF}"
+}
+
+TMP_FILE=/tmp/gits-log.tmp.$$
+echo -n > $TMP_FILE
+
+root="$PWD"
+for x in `find . -type d -name ".git" | grep -v checkout | sort` ; do
+  cd $root/$x/..
+
+  repo_relative_path=".${PWD#$root}"
+  repo_short_name=$(basename $PWD)
+
+  git log \
+      --no-merges --oneline --author $user \
+      --after "$date 00:00" --before "$date 23:59" \
+      --format=format:"%h;%ci;%cn;%ai;%an;%s" &> $TMP_FILE
+
+  if [ $? != 0 ] ; then
+    echo -e "${C_WHITE}$repo_relative_path${C_OFF}"
+    echo -ne "${C_RED}  Error: ${C_OFF}"
+    cat $TMP_FILE
+    echo ""
+  elif [ -s $TMP_FILE ] ; then
+    echo -e "${C_WHITE}$repo_relative_path${C_OFF}"
+    IFS=$'\n'
+    for c in `cat $TMP_FILE | sort -k 1.9` ; do
+      printCommit $c
+    done
+    echo ""
+  fi
+done
+
+rm $TMP_FILE
+
