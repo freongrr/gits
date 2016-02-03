@@ -3,10 +3,17 @@
 base=$(dirname $0)
 
 if [ -z "$1" ] ; then
+  echo "(Did you mean 'gits help' maybe?)"
   $base/commands/status
-else
+elif [ "$1" == "--help" ] ; then
+  $base/commands/help
+  exit 255
+elif [ -e "$base/commands/$1" ] ; then
   command="$base/commands/$1"
   shift
   $command $*
+else
+  echo "Invalid command: $1"
+  exit 1
 fi
 
