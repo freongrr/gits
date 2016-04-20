@@ -1,0 +1,30 @@
+#!/bin/bash
+
+source "$(dirname $0)/../colors"
+
+if [ "$1" == "--description" ] ; then
+  echo "download objects & refs from the remote repositories"
+  exit 1
+elif [ "$1" == "--help" ] ; then
+  echo "Usage: gits $(basename $0) [--help] [--prune]"
+  echo
+  echo "Options:"
+  echo "    --help show this message"
+  echo "    --prune prune deleted refs"
+  exit 1
+fi
+
+root="$PWD"
+for x in `find . -type d -name ".git" | grep -v checkout | sort` ; do
+  cd $root/$x/..
+
+  echo "Updating $(basename $PWD)..."
+  if [ "$1" == "--prune" ] ; then
+    git fetch --all --quiet --prune
+  else
+    git fetch --all --quiet
+  fi
+
+  echo
+done
+
