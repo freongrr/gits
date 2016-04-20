@@ -67,7 +67,7 @@ for x in `find . -type d -name ".git" | grep -v checkout | sort` ; do
   repo_short_name=$(basename $PWD)
 
   git log \
-      --no-merges --oneline --author $user \
+      --all --no-merges --oneline --author $user \
       --after "$date 00:00" --before "$date 23:59" \
       --format=format:"%h;%ci;%cn;%ai;%an;%s" &> $TMP_FILE
 

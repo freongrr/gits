@@ -7,12 +7,13 @@ if [ "$1" == "--description" ] ; then
   echo "show the changes between versions"
   exit 1
 elif [ "$1" == "--help" ] ; then
-  echo "Usage: gits $(basename $0) [--help] [--all] [--collapse] [--since DATE] [--until DATE] FROM [TO]"
+  echo "Usage: gits $(basename $0) [--help] [--all] [--csv] [--since DATE] [--until DATE] FROM [TO]"
   echo
   echo "Options:"
   echo "    --help          show this message"
   echo "    --all           look at all refs"
-  echo "    --collapse      collapse the changes across all repositories"
+  echo "    --csv           print changes as CSV records"
+  echo "    --confluence    print changes as Confluence XHTML"
   echo "    --since=<date>  show changes newer than this date"
   echo "    --until=<date>  show changes older than this date"
   echo
@@ -29,15 +30,17 @@ if echo $OSTYPE | grep -qiE "(solaris|darwin)" ; then
     exit 1
   fi
 else
-  args=`getopt -o "h,a,c,s:,u:" -l "help,all,collapse,since:,until:" -- "$@"` || fatal "Invalid arguments"
+  args=`getopt -o "h,a,c,f,s:,u:" -l "help,all,csv,confluence,since:,until:" -- "$@"` || fatal "Invalid arguments"
 fi
 
 eval set -- "$args"
 while [ $# != 0 ] ; do
   opt="$1"; shift;
   case "$opt" in
-    -c|--collapse)
-      collapse=1;;
+    -c|--csv)
+      csv=1 && export=1;;
+    -f|--confluence)
+      confluence=1 && export=1;;
     -a|--all)
       all=1;;
     -s|--since)
@@ -56,22 +59,29 @@ if [[ "$tag" == "" && "$since" == "" && "$until" == "" ]] ; then
   fatal "Missing tag"
 fi
 
+TMP_FILE=/tmp/changelog.$$
+echo -n > $TMP_FILE
+
 root="$PWD"
 for x in `find . -type d -name ".git" | grep -v checkout | sort` ; do
   cd $root/$x/..
 
-  [ -z "$collapse" ] && info "*** $(basename $PWD) ***"
+  repo=$(basename $PWD)
 
-  command="git log --no-merges --format=(%ad)%x20[%an]%x20%s"
+  command="git log --no-merges"
+
+  if [ -z "$export" ] ; then
+    command="$command --format=(%ad)%x20[%an]%x20%s"
+  else
+    command="$command --format=%s"
+  fi
 
   if [ -n "$all" ] ; then
     command="$command --all"
   fi
-
   if [ -n "$since" ] ; then
     command="$command --since $since"
   fi
-
   if [ -n "$until" ] ; then
     command="$command --until $until"
   fi
@@ -79,11 +89,19 @@ for x in `find . -type d -name ".git" | grep -v checkout | sort` ; do
   if [ -n "$tag" ] ; then
     tags=`git tag | grep "$tag" | wc -l | sed -e "s/ //g"`
     if [[ $tags == 0 ]] ; then
-      warn "Can't find match for '$tag'"
+      if [ -z "$export" ] ; then
+        info "*** $repo ***"      
+        warn "Can't find match for '$tag'"
+        echo
+      fi
       continue
     elif [[ $tags > 1 ]] ; then
-      warn "Found multiple matches for '$tag':"
-      git tag | grep "$tag"
+      if [ -z "$export" ] ; then
+        info "*** $repo ***"      
+        warn "Found multiple matches for '$tag':"
+        git tag | grep "$tag"
+        echo
+      fi
       continue
     fi
     repo_tag=`git tag | grep "$tag"`
@@ -92,18 +110,45 @@ for x in `find . -type d -name ".git" | grep -v checkout | sort` ; do
 
   command="$command --"
 
-  log=$($command | \
+  $command | \
       grep -v "maven-release-plugin" | \
       grep -v "Pointing to the next version" | \
       grep -v "Preparing for the release" | \
-      grep -v "No JIRA - Creating branch")
+      grep -v "No JIRA - Creating branch" |
+      grep -v "DA-127" > $TMP_FILE
 
-  if [ -z "$log" ] ; then
-    [ -z "$collapse" ] && debug "No changes"
+  if [ ! -s "$TMP_FILE" ] ; then
+    if [ -z "$export" ] ; then
+      info "*** $repo ***"
+      debug "No changes"
+      echo
+    fi
+  elif [ -n "$confluence" ] ; then
+    echo "<h2>$repo</h2>"
+    echo "<ul>"
+    OLD_IFS=$IFS
+    IFS=$'\n'
+    for issue in `cat $TMP_FILE | grep -Eo "[A-Z]+-[0-9]+" | sort -u` ; do
+      echo "<li><ac:structured-macro ac:macro-id=\"758ffcb5-015b-483e-80be-66c1aba77851\" ac:name=\"jira\" ac:schema-version=\"1\"><ac:parameter ac:name=\"server\">TradingScreen</ac:parameter><ac:parameter ac:name=\"columns\">key,summary,type,created,updated,due,assignee,reporter,priority,status,resolution</ac:parameter><ac:parameter ac:name=\"serverId\">ef3de52e-cca4-3a5e-ade0-822c8d239560</ac:parameter><ac:parameter ac:name=\"key\">$issue</ac:parameter></ac:structured-macro></li>"
+    done
+    for commit in `cat $TMP_FILE | grep -Ev "[A-Z]+-[0-9]+" | sort -u` ; do
+      echo "<li>${commit/&/&amp;}</li>"
+    done
+    echo "</ul>"
+    IFS=$OLD_IFS
+  elif [ -n "$csv" ] ; then
+    OLD_IFS=$IFS
+    IFS=$'\n'
+    for line in `cat $TMP_FILE | sort -u` ; do
+      echo $line | sed -n -e "s@\([A-Z]\+-[0-9]\+\) [-:] *\(.*\)@$repo;\1;\2@p"
+      echo $line | sed -n -e "s@\(No JIRA\) [-:] *\(.*\)@$repo;\1;\2@p"
+    done
+    IFS=$OLD_IFS
   else
-    echo "$log"
+    info "*** $repo ***"
+    cat $TMP_FILE
+    echo
   fi
 
-  [ -z "$collapse" ] && echo
 done
 
