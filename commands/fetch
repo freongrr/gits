@@ -1,6 +1,7 @@
 #!/bin/bash
 
 source "$(dirname $0)/../colors"
+source "$(dirname $0)/../logger"
 
 if [ "$1" == "--description" ] ; then
   echo "download objects & refs from the remote repositories"
@@ -18,13 +19,11 @@ root="$PWD"
 for x in `find . -type d -name ".git" | grep -v checkout | sort` ; do
   cd $root/$x/..
 
-  echo "Updating $(basename $PWD)..."
+  info "Updating $(basename $PWD)..."
   if [ "$1" == "--prune" ] ; then
     git fetch --all --quiet --prune
   else
     git fetch --all --quiet
   fi
-
-  echo
 done
 
