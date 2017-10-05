@@ -86,25 +86,26 @@ for x in `find . -type d -name ".git" | grep -v checkout | sort` ; do
     command="$command --until $until"
   fi
 
+  if [ -z "$csv" ] ; then
+    info "*** $repo ***"
+  fi
+
   if [ -n "$tag" ] ; then
     tags=`git tag | grep "$tag" | wc -l | sed -e "s/ //g"`
     if [[ $tags == 0 ]] ; then
       if [ -z "$csv" ] ; then
-        info "*** $repo ***"      
         warn "Can't find match for '$tag'"
         echo
       fi
       continue
     elif [[ $tags > 1 ]] ; then
       if [ -z "$csv" ] ; then
-        info "*** $repo ***"      
-        warn "Found multiple matches for '$tag':"
-        git tag | grep "$tag"
-        echo
+        warn "Found multiple matches for '$tag': $(git tag | grep "$tag" | xargs | sed -e 's/ /, /g')"
       fi
-      continue
+      repo_tag=`git tag | grep "$tag" | head -n 1`
+    else
+      repo_tag=`git tag | grep "$tag"`
     fi
-    repo_tag=`git tag | grep "$tag"`
     command="$command $repo_tag..$dest"
   fi
 
@@ -114,15 +115,13 @@ for x in `find . -type d -name ".git" | grep -v checkout | sort` ; do
     $command -- > $TMP_FILE
   fi
 
-  if [ -n "$csv" ] ; then
+  if [ -s "$TMP_FILE" ] ; then
     cat $TMP_FILE
-  else
-    info "*** $repo ***"
-    if [ -s "$TMP_FILE" ] ; then
-      cat $TMP_FILE
-    else
-      debug "No changes"
-    fi
+  elif [ -z "$csv" ] ; then
+    debug "No changes"
+  fi
+
+  if [ -z "$csv" ] ; then
     echo
   fi
 
