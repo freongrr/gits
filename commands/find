@@ -1,0 +1,86 @@
+#!/bin/bash
+
+source "$(dirname $0)/../colors"
+source "$(dirname $0)/../logger"
+
+if [ "$1" == "--description" ] ; then
+  echo "find a commit by searching the commit message"
+  exit 1
+elif [ "$1" == "--help" ] ; then
+  echo "Usage: gits $(basename $0) [--help] [--first] PATTERN"
+  echo
+  echo "Options:"
+  echo "    --help   show this message"
+  echo "    --first  only show the first commit and first branch/tag"
+  exit 1
+fi
+
+args=`getopt -o "h,f" -l "help,first" -- "$@"` || fatal "Invalid arguments"
+
+eval set -- "$args"
+while [ $# != 0 ] ; do
+  opt="$1"; shift;
+  case "$opt" in
+    -f|--first)
+      first="1";;
+    --)
+      break;;
+  esac
+done
+
+[ -z "$1" ] && fatal "Missing PATTERN"
+
+TMP_COMMITS=$(mktemp)
+TMP_BRANCHES=$(mktemp)
+TMP_TAGS=$(mktemp)
+
+function only_last_line {
+  local file="$1"
+  local tmp_file=$(mktemp)
+  cat $1 > $tmp_file
+  cat $tmp_file | tail -n 1 > $file
+}
+
+root="$PWD"
+for x in `find . -type d -name ".git" | grep -v checkout | sort` ; do
+  cd $root/$x/..
+
+  repo_short_name=$(basename $PWD)
+
+  git log --all --grep "$1" --format="format:%h-%s" > $TMP_COMMITS
+  if [ -n "$first" ] ; then
+    only_last_line $TMP_COMMITS
+  fi
+
+  if [ -s $TMP_COMMITS ] ; then
+    echo -e "${C_WHITE}$repo_short_name${C_OFF}"
+
+    IFS=$'\n'
+    for c in $(cat $TMP_COMMITS) ; do
+      hash=$(echo $c | cut -d'-' -f1)
+      summary=$(echo $c | cut -d'-' -f2-)
+      echo -e "* ${C_YELLOW}${hash}${C_OFF} - ${summary}"
+
+      git branch --all --contains ${hash} | grep -v HEAD | sed -n -e 's/  remotes\/origin\/\([^ ]\+\).*/\1/p' > $TMP_BRANCHES
+      git tag --contains ${hash} > $TMP_TAGS
+
+      if [ -n "$first" ] ; then
+        only_last_line $TMP_BRANCHES
+        only_last_line $TMP_TAGS
+      fi
+
+      echo -e "  in branches ${C_YELLOW}$(cat $TMP_BRANCHES | xargs)${C_OFF}"
+      echo -n "  in tags "
+      if [ -s $TMP_TAGS ] ; then
+        echo -e "${C_YELLOW}$(cat $TMP_TAGS | xargs)${C_OFF}"
+      else
+        echo -e "${C_RED}not tagged${C_OFF}"
+      fi
+    done
+  fi
+done
+
+rm -f $TMP_COMMITS
+rm -f $TMP_BRANCHES
+rm -f $TMP_TAGS
+
